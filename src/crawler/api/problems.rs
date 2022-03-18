@@ -7,6 +7,8 @@ use problem_info::{get_problem_info, ProblemInfo};
 use std::collections::HashMap;
 use tokio::try_join;
 
+/// Problem information with its estimated difficulty.
+#[derive(Clone, Debug)]
 pub struct Problem {
     pub problem_id: String,
     pub contest_id: String,
@@ -23,13 +25,18 @@ impl Problem {
     }
 }
 
+/// Fetch problems with their difficulties.
 pub async fn get_problems() -> Result<Vec<Problem>> {
+    // Fetch necessary information from AtCoder Problems API.
     let (problem_difficulties, problem_info) = try_join!(get_difficulties(), get_problem_info())?;
+
+    // Convert `problem_info` into HashMap so that we can retrieve them by `problem_id` efficiently.
     let problem_info_map: HashMap<String, ProblemInfo> = problem_info
         .into_iter()
         .map(|problem| (problem.id.clone(), problem))
         .collect();
 
+    // Join `problem_difficulties` and `problem_info` by their `problem_id`.
     let merged_problems = problem_difficulties
         .into_iter()
         .filter_map(|difficulty| {
