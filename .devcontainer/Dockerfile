@@ -8,5 +8,6 @@ FROM mcr.microsoft.com/vscode/devcontainers/rust:0-${VARIANT}
 # RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 #     && apt-get -y install --no-install-recommends <your-package-list-here>
 
+RUN cargo install cargo-edit sccache
 ENV RUST_LOG=info
-RUN cargo install cargo-edit
+ENV RUSTC_WRAPPER=/usr/local/cargo/bin/sccache

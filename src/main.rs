@@ -1,16 +1,17 @@
-use crate::bingo_generator::get_difficulties;
-use log::error;
+mod api;
 
-mod bingo_generator;
+use anyhow::Result;
+use api::problems::get_problems;
 
 #[tokio::main]
-async fn main() {
-    env_logger::init();
+async fn main() -> Result<()> {
+    let problems = get_problems().await?;
+    for problem in problems {
+        println!(
+            "{} [{}]: {}",
+            problem.problem_id, problem.title, problem.difficulty
+        );
+    }
 
-    let difficulties = match get_difficulties().await {
-        Ok(msg) => msg,
-        Err(e) => return error!("Failed to fetch difficulties: {:?}", e),
-    };
-
-    println!("{}...", difficulties.chars().take(50).collect::<String>());
+    Ok(())
 }
