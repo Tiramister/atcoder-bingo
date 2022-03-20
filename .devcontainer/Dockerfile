@@ -1,13 +1,9 @@
-# See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.224.3/containers/rust/.devcontainer/base.Dockerfile
+FROM rust:1.59-bullseye
 
-# [Choice] Debian OS version (use bullseye on local arm64/Apple Silicon): buster, bullseye
-ARG VARIANT="buster"
-FROM mcr.microsoft.com/vscode/devcontainers/rust:0-${VARIANT}
-
-# [Optional] Uncomment this section to install additional packages.
-# RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-#     && apt-get -y install --no-install-recommends <your-package-list-here>
-
+# Install Rust packages for development
 RUN cargo install cargo-edit sccache
-ENV RUST_LOG=info
 ENV RUSTC_WRAPPER=/usr/local/cargo/bin/sccache
+
+# Install PostgreSQL client
+RUN apt-get update \
+    && apt-get install -y postgresql-client-13
