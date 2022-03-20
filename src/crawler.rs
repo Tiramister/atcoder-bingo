@@ -1,2 +1,1 @@
-pub mod api;
-pub mod bingo_generator;
+pub mod problems;

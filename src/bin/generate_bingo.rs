@@ -1,7 +1,6 @@
 use anyhow::Result;
+use atcoder_bingo_backend::crawler::problems::{get_problems, Problem};
 use rand::prelude::SliceRandom;
-
-use super::api::problems::{get_problems, Problem};
 
 pub const BINGO_SIZE: usize = 3;
 const DIFF_DISTR: [(i32, i32); 5] = [
@@ -12,7 +11,8 @@ const DIFF_DISTR: [(i32, i32); 5] = [
     (2800, 10000),
 ];
 
-pub async fn generate_bingo() -> Result<Vec<Vec<Problem>>> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let mut rng = rand::thread_rng();
 
     // Fetch problems and sort by difficulties.
@@ -34,11 +34,18 @@ pub async fn generate_bingo() -> Result<Vec<Vec<Problem>>> {
         // choose problems from [lower_index, upper_index) randomly.
         let mut indices: Vec<usize> = (lower_index..upper_index).collect();
         let (chosen_indices, _) = indices.partial_shuffle(&mut rng, BINGO_SIZE * BINGO_SIZE);
-        let bingo = chosen_indices
+        let bingo: Vec<Problem> = chosen_indices
             .iter_mut()
             .map(|index| problems[*index].clone())
             .collect();
         bingos.push(bingo);
     }
-    Ok(bingos)
+
+    for bingo in &bingos {
+        for problem in bingo {
+            println!("{} {}: {}", problem.problem_id, problem.title, problem.difficulty);
+        }
+        println!()
+    }
+    Ok(())
 }
