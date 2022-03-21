@@ -1,6 +1,9 @@
 use anyhow::Result;
 use atcoder_bingo_backend::crawler::problems::{get_problems, Problem};
+use chrono::Local;
 use rand::prelude::SliceRandom;
+use std::{env, time::Duration};
+use tokio_postgres::{Client, NoTls};
 
 pub const BINGO_SIZE: usize = 3;
 const DIFF_DISTR: [(i32, i32); 5] = [
@@ -11,8 +14,7 @@ const DIFF_DISTR: [(i32, i32); 5] = [
     (2800, 10000),
 ];
 
-#[tokio::main]
-async fn main() -> Result<()> {
+async fn generate_bingo() -> Result<Vec<Vec<Problem>>> {
     let mut rng = rand::thread_rng();
 
     // Fetch problems and sort by difficulties.
@@ -34,18 +36,69 @@ async fn main() -> Result<()> {
         // choose problems from [lower_index, upper_index) randomly.
         let mut indices: Vec<usize> = (lower_index..upper_index).collect();
         let (chosen_indices, _) = indices.partial_shuffle(&mut rng, BINGO_SIZE * BINGO_SIZE);
-        let bingo: Vec<Problem> = chosen_indices
+        let bingo = chosen_indices
             .iter_mut()
             .map(|index| problems[*index].clone())
             .collect();
         bingos.push(bingo);
     }
+    Ok(bingos)
+}
 
-    for bingo in &bingos {
-        for problem in bingo {
-            println!("{} {}: {}", problem.problem_id, problem.title, problem.difficulty);
+async fn save_bingos(bingos: &[Vec<Problem>], client: &Client) -> Result<()> {
+    // Write to database.
+    for (level, bingo) in bingos.iter().enumerate() {
+        for (position, problem) in bingo.iter().enumerate() {
+            client.execute("INSERT INTO bingo (level, position, problem_id, contest_id, title, difficulty) VALUES ($1, $2, $3, $4, $5, $6)", 
+        &[&(level as i32), &(position as i32), &problem.problem_id, &problem.contest_id, &problem.title, &problem.difficulty]).await?;
         }
-        println!()
     }
     Ok(())
+}
+
+async fn generate_save_daily_bingo(client: &Client) -> Result<bool> {
+    // Check if today's bingo is already exists.
+    let row = client
+        .query_one("SELECT max(created_date) FROM bingo", &[])
+        .await?;
+    let newest_timestamp: Option<chrono::DateTime<Local>> = row.get(0);
+
+    let bingo_exists = match newest_timestamp {
+        Some(timestamp) => timestamp.date() == Local::today(),
+        None => false,
+    };
+
+    if bingo_exists {
+        return Ok(false);
+    }
+
+    // Generate and store bingo.
+    eprintln!("generating new bingo.");
+    let bingos = generate_bingo().await?;
+    save_bingos(&bingos, client).await?;
+    Ok(true)
+}
+
+#[tokio::main]
+async fn main() {
+    // Connect to the database
+    let url = env::var("POSTGRES_URL").expect("error: POSTGRES_URL is not set.");
+    let (client, connection) = tokio_postgres::connect(&url, NoTls)
+        .await
+        .expect("error: failed to connect to PostgreSQL.");
+
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
+
+    loop {
+        // Check if the daily bingo exists in every 5 mins
+        if let Err(e) = generate_save_daily_bingo(&client).await {
+            // Dump error message, but don't suspend.
+            eprintln!("failed to generate bingo: {}", e);
+        }
+        tokio::time::sleep(Duration::from_secs(300)).await;
+    }
 }

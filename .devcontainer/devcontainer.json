@@ -1,5 +1,5 @@
 {
-	"name": "atCoder-bingo-backend-development",
+	"name": "acb-development",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "backend-development",
 	"workspaceFolder": "/work/",
