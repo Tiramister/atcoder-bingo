@@ -1,9 +1,12 @@
 use anyhow::Result;
-use atcoder_bingo_backend::crawler::problems::{get_problems, Problem};
+use atcoder_bingo_backend::{
+    crawler::problems::{get_problems, Problem},
+    database::get_client,
+};
 use chrono::Local;
 use rand::prelude::SliceRandom;
-use std::{env, time::Duration};
-use tokio_postgres::{Client, NoTls};
+use std::time::Duration;
+use tokio_postgres::Client;
 
 pub const BINGO_SIZE: usize = 3;
 const DIFF_DISTR: [(i32, i32); 5] = [
@@ -82,16 +85,7 @@ async fn generate_save_daily_bingo(client: &Client) -> Result<bool> {
 #[tokio::main]
 async fn main() {
     // Connect to the database
-    let url = env::var("POSTGRES_URL").expect("error: POSTGRES_URL is not set.");
-    let (client, connection) = tokio_postgres::connect(&url, NoTls)
-        .await
-        .expect("error: failed to connect to PostgreSQL.");
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
+    let client = get_client().await;
 
     loop {
         // Check if the daily bingo exists in every 5 mins

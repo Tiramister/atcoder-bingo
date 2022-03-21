@@ -4,16 +4,25 @@ mod problem_info;
 use anyhow::Result;
 use difficulty::get_difficulties;
 use problem_info::{get_problem_info, ProblemInfo};
+use serde::Serialize;
 use std::collections::HashMap;
 use tokio::try_join;
 
 /// Problem information with its estimated difficulty.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Problem {
     pub problem_id: String,
     pub contest_id: String,
     pub title: String,
     pub difficulty: i32,
+}
+impl Problem {
+    pub fn url(&self) -> String {
+        format!(
+            "https://atcoder.jp/contests/{}/tasks/{}",
+            self.contest_id, self.problem_id,
+        )
+    }
 }
 
 /// Fetch problems with their difficulties.

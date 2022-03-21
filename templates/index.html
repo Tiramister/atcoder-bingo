@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>AtCoder Bingo!</title>
+</head>
+
+<body>
+    {% for bingo in bingos %}
+    <h1>{{ bingo.1 }}</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Problem ID</th>
+                <th>Title</th>
+                <th>Difficulty</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for problem in bingo.0 %}
+            <tr>
+                <td>{{ problem.problem_id }}</td>
+                <td>{{ problem.title }}</td>
+                <td>{{ problem.difficulty }}</td>
+                <td><a href="{{ problem.url() }}">{{ problem.url() }}</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+</body>
+
+</html>
