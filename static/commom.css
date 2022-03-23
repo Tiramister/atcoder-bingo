@@ -1,0 +1,13 @@
+.navbar {
+    background-color: purple;
+}
+
+.bingo-cell {
+    aspect-ratio: 1 / 1;
+    position: relative;
+    background-color: white;
+}
+
+.bingo-cell:hover {
+    filter: brightness(95%);
+}
