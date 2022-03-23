@@ -11,20 +11,17 @@ services:
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     restart: always
     volumes:
-      - ../postgres-data:/var/lib/postgresql/data
-      - ../initdb:/docker-entrypoint-initdb.d
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
 
-  backend-development:
+  backend:
     build: .
-    hostname: acb-backend-development
+    hostname: acb-backend
     depends_on:
       - postgresql
     environment:
       POSTGRES_URL: postgresql://db_user:db_pass@postgresql:5432/test_db
       RUST_LOG: "info"
     ports:
-      - "8080:8080"
-    volumes:
-      - ../:/work/
-    working_dir: /work/
-    command: /bin/sh -c "while sleep 1000; do :; done"
+      - "8085:8080"
+    restart: always

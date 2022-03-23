@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
                 .service(fs::Files::new("/static", "./static").show_files_listing()),
         )
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await?;
     Ok(())
