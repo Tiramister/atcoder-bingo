@@ -1,5 +1,5 @@
 use actix_files as fs;
-use actix_web::{get, App, HttpResponse, HttpServer, Responder, ResponseError, Result};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, ResponseError, Result};
 use askama::Template;
 use atcoder_bingo_backend::{crawler::problems::Problem, database::get_client};
 use chrono::Local;
@@ -63,9 +63,11 @@ async fn index() -> Result<impl Responder, MyError> {
 #[tokio::main]
 async fn main() -> Result<()> {
     HttpServer::new(|| {
-        App::new()
-            .service(index)
-            .service(fs::Files::new("/static", "./static").show_files_listing())
+        App::new().service(
+            web::scope("/atcoder-bingo")
+                .service(index)
+                .service(fs::Files::new("/static", "./static").show_files_listing()),
+        )
     })
     .bind(("127.0.0.1", 8080))?
     .run()
