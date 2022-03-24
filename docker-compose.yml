@@ -1,27 +1,34 @@
-version: "3.5"
+version: "3"
 
 services:
   postgresql:
     image: postgres:14
     hostname: postgresql
+    env_file:
+      - ./config/database.env
     environment:
-      POSTGRES_USER: db_user
-      POSTGRES_PASSWORD: db_pass
-      POSTGRES_DB: test_db
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
-    restart: always
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - postgres_db:/var/lib/postgresql
       - ./initdb:/docker-entrypoint-initdb.d
+    ports:
+      - "15432:5432"
+    restart: always
 
   backend:
     build: .
     hostname: acb-backend
     depends_on:
-      - postgresql
+      postgresql:
+        condition: service_started
+    env_file:
+      - ./config/database.env
     environment:
-      POSTGRES_URL: postgresql://db_user:db_pass@postgresql:5432/test_db
       RUST_LOG: "info"
     ports:
       - "8085:8080"
     restart: always
+
+volumes:
+  postgres_db:
+    driver: local

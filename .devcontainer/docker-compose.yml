@@ -1,4 +1,4 @@
-version: "3.5"
+version: "3"
 
 services:
   postgresql:
@@ -9,16 +9,16 @@ services:
       POSTGRES_PASSWORD: db_pass
       POSTGRES_DB: test_db
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
-    restart: always
     volumes:
-      - ../postgres-data:/var/lib/postgresql/data
+      - postgres_db_dev:/var/lib/postgresql/data
       - ../initdb:/docker-entrypoint-initdb.d
 
   backend-development:
     build: .
     hostname: acb-backend-development
     depends_on:
-      - postgresql
+      postgresql:
+        condition: service_started
     environment:
       POSTGRES_URL: postgresql://db_user:db_pass@postgresql:5432/test_db
       RUST_LOG: "info"
@@ -28,3 +28,7 @@ services:
       - ../:/work/
     working_dir: /work/
     command: /bin/sh -c "while sleep 1000; do :; done"
+
+volumes:
+  postgres_db_dev:
+    driver: local
