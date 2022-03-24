@@ -23,16 +23,19 @@ enum MyError {
 
     #[error(transparent)]
     Askama(#[from] askama::Error),
+
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
 }
 impl ResponseError for MyError {}
 
 #[get("/")]
 async fn index() -> Result<impl Responder, MyError> {
-    let client = get_client().await;
+    let client = get_client().await?;
 
     let beginning_of_today = Local::today().and_hms(0, 0, 0);
     let rows = client.query(
-        "SELECT problem_id, contest_id, title, difficulty FROM bingo WHERE created_date >= $1 ORDER BY level asc, position asc",
+        "SELECT problem_id, contest_id, title, difficulty FROM bingo WHERE created_time >= $1 ORDER BY position asc",
         &[&beginning_of_today],
     ).await?;
 

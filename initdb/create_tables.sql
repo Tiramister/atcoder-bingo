@@ -1,7 +1,6 @@
 CREATE TABLE bingo (
     id             SERIAL PRIMARY KEY,
-    created_date   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    level          INT,
+    created_time   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     position       INT,
     problem_id     TEXT,
     contest_id     TEXT,

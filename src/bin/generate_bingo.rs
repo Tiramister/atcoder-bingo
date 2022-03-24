@@ -52,8 +52,8 @@ async fn save_bingos(bingos: &[Vec<Problem>], client: &Client) -> Result<()> {
     // Write to database.
     for (level, bingo) in bingos.iter().enumerate() {
         for (position, problem) in bingo.iter().enumerate() {
-            client.execute("INSERT INTO bingo (level, position, problem_id, contest_id, title, difficulty) VALUES ($1, $2, $3, $4, $5, $6)", 
-        &[&(level as i32), &(position as i32), &problem.problem_id, &problem.contest_id, &problem.title, &problem.difficulty]).await?;
+            client.execute("INSERT INTO bingo (position, problem_id, contest_id, title, difficulty) VALUES ($1, $2, $3, $4, $5)", 
+        &[&((level * 9 + position) as i32), &problem.problem_id, &problem.contest_id, &problem.title, &problem.difficulty]).await?;
         }
     }
     Ok(())
@@ -62,7 +62,7 @@ async fn save_bingos(bingos: &[Vec<Problem>], client: &Client) -> Result<()> {
 async fn generate_save_daily_bingo(client: &Client) -> Result<bool> {
     // Check if today's bingo is already exists.
     let row = client
-        .query_one("SELECT max(created_date) FROM bingo", &[])
+        .query_one("SELECT max(created_time) FROM bingo", &[])
         .await?;
     let newest_timestamp: Option<chrono::DateTime<Local>> = row.get(0);
 
@@ -85,7 +85,13 @@ async fn generate_save_daily_bingo(client: &Client) -> Result<bool> {
 #[tokio::main]
 async fn main() {
     // Connect to the database
-    let client = get_client().await;
+    let mut client = get_client().await;
+    while let Err(e) = client {
+        eprintln!("{e}");
+        tokio::time::sleep(5000);
+        client = get_client().await;
+    }
+    let client = client.unwrap();
 
     loop {
         // Check if the daily bingo exists in every 5 mins
