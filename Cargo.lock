@@ -334,6 +334,7 @@ dependencies = [
  "chrono",
  "postgres-types",
  "rand",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

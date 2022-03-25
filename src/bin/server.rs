@@ -5,6 +5,7 @@ use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, ResponseErro
 use askama::Template;
 use atcoder_bingo_backend::database::get_postgres_client;
 use chrono::Local;
+use regex::Regex;
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -88,23 +89,26 @@ async fn get_todays_bingos(user_id_opt: &Option<String>) -> anyhow::Result<Vec<V
         .collect();
 
     if let Some(user_id) = user_id_opt {
-        // Update status
-        for problem in &mut problems {
-            let rows = client
-                .query(
-                    "SELECT accepted FROM user_status \
+        // Validate input
+        if Regex::new("^[a-zA-Z0-9_]{0,16}$").unwrap().is_match(user_id) {
+            // Update status
+            for problem in &mut problems {
+                let rows = client
+                    .query(
+                        "SELECT accepted FROM user_status \
                     WHERE user_id = $1 AND problem_row_id = $2",
-                    &[user_id, &problem.row_id],
-                )
-                .await?;
+                        &[user_id, &problem.row_id],
+                    )
+                    .await?;
 
-            if !rows.is_empty() {
-                let accepted: bool = rows[0].get(0);
-                problem.status = if accepted {
-                    Status::Accepted
-                } else {
-                    Status::Trying
-                };
+                if !rows.is_empty() {
+                    let accepted: bool = rows[0].get(0);
+                    problem.status = if accepted {
+                        Status::Accepted
+                    } else {
+                        Status::Trying
+                    };
+                }
             }
         }
     }
