@@ -1,11 +1,12 @@
 use anyhow::Result;
 use atcoder_bingo_backend::{
-    crawler::problems::{get_problems, Problem},
-    database::get_client,
+    crawler::problems::{fetch_problems, Problem},
+    database::get_postgres_client,
 };
-use chrono::Local;
+use chrono::{Local, NaiveDate};
 use rand::prelude::SliceRandom;
 use std::time::Duration;
+use tokio::time::sleep;
 use tokio_postgres::Client;
 
 pub const BINGO_SIZE: usize = 3;
@@ -13,18 +14,18 @@ const DIFF_DISTR: [(i32, i32); 5] = [
     (-10000, 600),
     (400, 1400),
     (1200, 2200),
-    (2000, 3000),
-    (2800, 10000),
+    (2000, 2800),
+    (2600, 10000),
 ];
 
-async fn generate_bingo() -> Result<Vec<Vec<Problem>>> {
+async fn generate_bingo() -> Result<Vec<Problem>> {
     let mut rng = rand::thread_rng();
 
     // Fetch problems and sort by difficulties.
-    let mut problems = get_problems().await?;
+    let mut problems = fetch_problems().await?;
     problems.sort_by_key(|problem| problem.difficulty);
 
-    let mut bingos = Vec::with_capacity(DIFF_DISTR.len());
+    let mut bingo_problems = Vec::new();
     for (lower_diff, upper_diff) in DIFF_DISTR {
         // The minimum index whose difficulty is no less than `lower_diff`.
         // Double the difficulties so that any problems doesn't match and we can detect the precise border.
@@ -36,38 +37,53 @@ async fn generate_bingo() -> Result<Vec<Vec<Problem>>> {
             .binary_search_by_key(&(upper_diff * 2 + 1), |problem| problem.difficulty * 2)
             .unwrap_or_else(|i| i);
 
-        // choose problems from [lower_index, upper_index) randomly.
+        // Choose problems from [lower_index, upper_index) randomly.
         let mut indices: Vec<usize> = (lower_index..upper_index).collect();
         let (chosen_indices, _) = indices.partial_shuffle(&mut rng, BINGO_SIZE * BINGO_SIZE);
-        let bingo = chosen_indices
+        let mut bingo = chosen_indices
             .iter_mut()
             .map(|index| problems[*index].clone())
             .collect();
-        bingos.push(bingo);
+
+        bingo_problems.append(&mut bingo);
     }
-    Ok(bingos)
+
+    Ok(bingo_problems)
 }
 
-async fn save_bingos(bingos: &[Vec<Problem>], client: &Client) -> Result<()> {
-    // Write to database.
-    for (level, bingo) in bingos.iter().enumerate() {
-        for (position, problem) in bingo.iter().enumerate() {
-            client.execute("INSERT INTO bingo (position, problem_id, contest_id, title, difficulty) VALUES ($1, $2, $3, $4, $5)", 
-        &[&((level * 9 + position) as i32), &problem.problem_id, &problem.contest_id, &problem.title, &problem.difficulty]).await?;
-        }
+async fn store_bingos(problems: &[Problem], client: &Client) -> Result<()> {
+    let today = Local::today().naive_local();
+
+    // Store to the database.
+    for (position, problem) in problems.iter().enumerate() {
+        client
+            .execute(
+                "INSERT INTO bingos \
+                (created_date, position, problem_id, contest_id, title, difficulty) \
+                VALUES ($1, $2, $3, $4, $5, $6)",
+                &[
+                    &today,
+                    &(position as i32),
+                    &problem.problem_id,
+                    &problem.contest_id,
+                    &problem.title,
+                    &problem.difficulty,
+                ],
+            )
+            .await?;
     }
     Ok(())
 }
 
-async fn generate_save_daily_bingo(client: &Client) -> Result<bool> {
-    // Check if today's bingo is already exists.
+async fn generate_and_store_daily_bingo(client: &Client) -> Result<bool> {
+    // Check if today's bingo already exists.
     let row = client
-        .query_one("SELECT max(created_time) FROM bingo", &[])
+        .query_one("SELECT max(created_date) FROM bingos", &[])
         .await?;
-    let newest_timestamp: Option<chrono::DateTime<Local>> = row.get(0);
+    let newest_date_opt: Option<NaiveDate> = row.get(0);
 
-    let bingo_exists = match newest_timestamp {
-        Some(timestamp) => timestamp.date() == Local::today(),
+    let bingo_exists = match newest_date_opt {
+        Some(newest_date) => newest_date == Local::today().naive_local(),
         None => false,
     };
 
@@ -76,29 +92,22 @@ async fn generate_save_daily_bingo(client: &Client) -> Result<bool> {
     }
 
     // Generate and store bingo.
-    eprintln!("generating new bingo.");
     let bingos = generate_bingo().await?;
-    save_bingos(&bingos, client).await?;
+    store_bingos(&bingos, client).await?;
     Ok(true)
 }
 
 #[tokio::main]
 async fn main() {
-    // Connect to the database
-    let mut client = get_client().await;
-    while let Err(e) = client {
-        eprintln!("{e}");
-        tokio::time::sleep(5000);
-        client = get_client().await;
-    }
-    let client = client.unwrap();
+    let client = get_postgres_client().await;
 
     loop {
         // Check if the daily bingo exists in every 5 mins
-        if let Err(e) = generate_save_daily_bingo(&client).await {
-            // Dump error message, but don't suspend.
-            eprintln!("failed to generate bingo: {}", e);
+        match generate_and_store_daily_bingo(&client).await {
+            Ok(true) => eprintln!("New bingo is generated."),
+            Ok(false) => eprintln!("Today's bingo already exists."),
+            Err(e) => eprintln!("Failed to generate bingo: {}", e),
         }
-        tokio::time::sleep(Duration::from_secs(300)).await;
+        sleep(Duration::from_secs(300)).await;
     }
 }

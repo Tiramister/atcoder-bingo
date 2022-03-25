@@ -1,7 +1,7 @@
 use actix_files as fs;
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, ResponseError, Result};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, ResponseError};
 use askama::Template;
-use atcoder_bingo_backend::{crawler::problems::Problem, database::get_client};
+use atcoder_bingo_backend::{crawler::problems::Problem, database::get_postgres_client};
 use chrono::Local;
 use thiserror::Error;
 
@@ -16,12 +16,6 @@ struct IndexTemplate {
 #[derive(Error, Debug)]
 enum MyError {
     #[error(transparent)]
-    Database(#[from] tokio_postgres::Error),
-
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
-
-    #[error(transparent)]
     Askama(#[from] askama::Error),
 
     #[error(transparent)]
@@ -29,15 +23,18 @@ enum MyError {
 }
 impl ResponseError for MyError {}
 
-#[get("/")]
-async fn index() -> Result<impl Responder, MyError> {
-    let client = get_client().await?;
+async fn get_todays_bingos() -> anyhow::Result<Vec<Vec<Problem>>> {
+    let client = get_postgres_client().await;
 
-    let beginning_of_today = Local::today().and_hms(0, 0, 0);
-    let rows = client.query(
-        "SELECT problem_id, contest_id, title, difficulty FROM bingo WHERE created_time >= $1 ORDER BY position asc",
-        &[&beginning_of_today],
-    ).await?;
+    // Filter today's problems
+    let today = Local::today().naive_local();
+    let rows = client
+        .query(
+            "SELECT problem_id, contest_id, title, difficulty FROM bingo \
+            WHERE created_date == $1 ORDER BY position asc",
+            &[&today],
+        )
+        .await?;
 
     let problems: Vec<Problem> = rows
         .iter()
@@ -48,23 +45,30 @@ async fn index() -> Result<impl Responder, MyError> {
             difficulty: row.get(3),
         })
         .collect();
+    assert_eq!(problems.len(), 45);
 
     // Divide problems into 5 chunks with 9 problems
-    let bingos = problems
-        .chunks(9)
-        .map(|bingo| bingo.to_vec())
-        .zip(LEVEL_NAMES)
-        .collect();
+    let bingos = problems.chunks(9).map(|bingo| bingo.to_vec()).collect();
+    Ok(bingos)
+}
+
+#[get("/")]
+async fn index() -> actix_web::Result<impl Responder, MyError> {
+    let bingos = get_todays_bingos().await?;
 
     // Rendering
-    let html = IndexTemplate { bingos };
+    let labeled_bingos = bingos.into_iter().zip(LEVEL_NAMES).collect();
+    let html = IndexTemplate {
+        bingos: labeled_bingos,
+    };
+
     Ok(HttpResponse::Ok()
         .content_type("text/html")
         .body(html.render()?))
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     HttpServer::new(|| {
         App::new().service(
             web::scope("/atcoder-bingo")

@@ -1,12 +1,22 @@
-use anyhow::{Context, Result};
-use std::env;
+use std::{env, time::Duration};
+use tokio::time::sleep;
 use tokio_postgres::{Client, NoTls};
 
-pub async fn get_client() -> Result<Client> {
+/// Get postgres client.
+/// Try to connect until success.
+pub async fn get_postgres_client() -> Client {
     let url = env::var("POSTGRES_URL").expect("error: POSTGRES_URL is not set.");
-    let (client, connection) = tokio_postgres::connect(&url, NoTls)
-        .await
-        .context("error: failed to connect to PostgreSQL.")?;
+
+    let mut conn = tokio_postgres::connect(&url, NoTls).await;
+    while let Err(e) = conn {
+        eprintln!("Failed to connect to the database: {e}");
+        sleep(Duration::from_secs(5)).await;
+        eprintln!("Try to connect again...");
+        conn = tokio_postgres::connect(&url, NoTls).await;
+    }
+
+    let (client, connection) = conn.unwrap();
+    eprintln!("Succeed to connect to the database.");
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
@@ -14,5 +24,5 @@ pub async fn get_client() -> Result<Client> {
         }
     });
 
-    Ok(client)
+    client
 }

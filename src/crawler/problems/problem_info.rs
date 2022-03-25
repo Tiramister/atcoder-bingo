@@ -1,6 +1,8 @@
 use anyhow::Result;
 use serde::Deserialize;
 
+use crate::crawler::api::hit_api;
+
 #[derive(Deserialize, Debug)]
 pub struct ProblemInfo {
     pub id: String,
@@ -8,12 +10,9 @@ pub struct ProblemInfo {
     pub title: String,
 }
 
-pub async fn get_problem_info() -> Result<Vec<ProblemInfo>> {
-    let body = reqwest::get("https://kenkoooo.com/atcoder/resources/problems.json")
-        .await?
-        .text()
-        .await?;
-
+/// Fetch problems from AtCoder Problems API.
+pub async fn fetch_problem_info() -> Result<Vec<ProblemInfo>> {
+    let body = hit_api("https://kenkoooo.com/atcoder/resources/problems.json").await?;
     let problems: Vec<ProblemInfo> = serde_json::from_str(&body)?;
     Ok(problems)
 }
