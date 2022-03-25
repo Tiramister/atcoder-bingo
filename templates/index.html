@@ -18,7 +18,13 @@
     </nav>
 
     <div class="container mt-3">
-        <ul class="nav nav-tabs" role="tablist">
+        <div class="col-3">
+            <form action="" method="get" id="user-id-form">
+                <input type="text" name="user_id" class="form-control" id="user-id-input" placeholder="AtCoder User ID">
+            </form>
+        </div>
+
+        <ul class="nav mt-3 nav-tabs" role="tablist">
             {% for (_, level) in bingos %}
 
             <li class="nav-item" role="presentation">
@@ -55,7 +61,8 @@
 
                 <div class="row justify-content-center">
                     {% for problem in problems %}
-                    <div class="col-4 col-md-3 col-lg-2 border bingo-cell">
+
+                    <div class="col-4 col-lg-2 border bingo-cell status-{{problem.status}}">
                         <a href="{{ problem.url() }}" target="_blank" rel="noopener noreferrer"
                             class="stretched-link"></a>
                         {{ problem.title }}

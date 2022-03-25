@@ -5,9 +5,20 @@
 .bingo-cell {
     aspect-ratio: 1 / 1;
     position: relative;
-    background-color: white;
 }
 
 .bingo-cell:hover {
     filter: brightness(95%);
+}
+
+.status-no-status {
+    background-color: white;
+}
+
+.status-trying {
+    background-color: khaki;
+}
+
+.status-accepted {
+    background-color: palegreen;
 }

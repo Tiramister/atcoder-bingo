@@ -15,14 +15,6 @@ pub struct Problem {
     pub title: String,
     pub difficulty: i32,
 }
-impl Problem {
-    pub fn url(&self) -> String {
-        format!(
-            "https://atcoder.jp/contests/{}/tasks/{}",
-            self.contest_id, self.problem_id,
-        )
-    }
-}
 
 /// Fetch problems with their difficulties.
 pub async fn fetch_problems() -> Result<Vec<Problem>> {
