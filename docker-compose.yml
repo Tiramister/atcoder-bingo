@@ -16,7 +16,7 @@ services:
     restart: always
 
   backend:
-    build: .
+    build: ./backend
     hostname: acb-backend
     depends_on:
       postgresql:
