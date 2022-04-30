@@ -10,25 +10,25 @@ services:
       POSTGRES_DB: test_db
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     volumes:
-      - postgres_db_dev:/var/lib/postgresql/data
+      - dev:/var/lib/postgresql/data
       - ../initdb:/docker-entrypoint-initdb.d
 
-  backend-development:
+  dev:
     build: .
-    hostname: acb-backend-development
+    hostname: dev
     depends_on:
       postgresql:
         condition: service_started
     environment:
       POSTGRES_URL: postgresql://db_user:db_pass@postgresql:5432/test_db
+      LOCAL_UID: "1000"
       RUST_LOG: "info"
     ports:
       - "8080:8080"
     volumes:
-      - ../:/work/
-    working_dir: /work/
+      - ../:/home/vscode/atcoder-bingo/
     command: /bin/sh -c "while sleep 1000; do :; done"
 
 volumes:
-  postgres_db_dev:
+  dev:
     driver: local

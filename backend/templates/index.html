@@ -20,7 +20,7 @@
     </nav>
 
     <div class="container mt-3">
-        <div class="col-3">
+        <div class="col-md-3">
             <form action="" method="get" id="user-id-form">
                 <input type="text" name="user_id" pattern="^[a-zA-Z0-9_]{0,16}$" class="form-control" id="user-id-input"
                     placeholder="AtCoder User ID">
@@ -28,7 +28,7 @@
         </div>
 
         <ul class="nav mt-3 nav-tabs" role="tablist">
-            {% for (_, level) in bingos %}
+            {% for (_, level) in problems %}
 
             <li class="nav-item" role="presentation">
                 {% let active_class %}
@@ -49,7 +49,7 @@
         </ul>
 
         <div class="tab-content mt-3">
-            {% for (problems, level) in bingos %}
+            {% for (problems, level) in problems %}
 
             {% let show_class %}
             {% if loop.first %}

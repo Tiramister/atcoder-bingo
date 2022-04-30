@@ -1,75 +1,62 @@
 use anyhow::Result;
 use atcoder_bingo_backend::{
-    crawler::submissions::{fetch_recent_submissions, Submission},
-    database::get_postgres_client,
+    crawler::submissions::{get_recent_submissions, Submission},
+    database::{models::UserStatus, DatabaseClient},
 };
 use std::time::Duration;
 use tokio::time::sleep;
-use tokio_postgres::Client;
 
-async fn update_by_submission(client: &Client, submission: &Submission) -> Result<bool> {
-    // Search the corresponding problem from the bingos.
+async fn update_user_status(client: &DatabaseClient, submission: &Submission) -> Result<bool> {
+    // Search the corresponding problem.
     let submission_date = submission.submission_time.date();
 
-    let rows = client
-        .query(
-            "SELECT id FROM bingos \
-            WHERE created_date = $1 AND problem_id = $2",
-            &[&submission_date, &submission.problem_id],
-        )
+    let problem_opt = client
+        .select_problem_by_chosen_date_and_id(&submission_date, &submission.problem_id)
         .await?;
 
-    if rows.is_empty() {
-        return Ok(false);
-    }
-    let row_id: i32 = rows[0].get(0);
-
-    // Fetch user status
-    let rows = client
-        .query(
-            "SELECT accepted FROM user_status \
-            WHERE user_id = $1 AND problem_row_id = $2",
-            &[&submission.user_id, &row_id],
-        )
-        .await?;
-
-    let updated = if rows.is_empty() {
-        client
-            .execute(
-                "INSERT INTO user_status (user_id, problem_row_id) VALUES ($1, $2)",
-                &[&submission.user_id, &row_id],
-            )
-            .await?;
-        true
-    } else {
-        let already_accepted: bool = rows[0].get(0);
-        !already_accepted && submission.is_accepted
+    let problem_row_id = match problem_opt {
+        Some(problem) => problem.id,
+        None => return Ok(false),
     };
 
-    if updated {
-        client
-            .execute(
-                "UPDATE user_status SET accepted = $1 \
-                WHERE user_id = $2 AND problem_row_id = $3",
-                &[&submission.is_accepted, &submission.user_id, &row_id],
-            )
-            .await?;
-    }
+    let new_user_status = UserStatus {
+        user_id: submission.user_id.clone(),
+        problem_row_id,
+        accepted: submission.is_accepted,
+    };
 
-    Ok(updated)
+    // Search the current user status.
+    let old_user_status_opt = client
+        .select_user_status(&new_user_status.user_id, new_user_status.problem_row_id)
+        .await?;
+
+    // Insert or update the user status if necessary.
+    match old_user_status_opt {
+        Some(old_user_status) => {
+            if !old_user_status.accepted && new_user_status.accepted {
+                client.update_user_status(&new_user_status).await?;
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        }
+        None => {
+            client.insert_user_status(&new_user_status).await?;
+            Ok(true)
+        }
+    }
 }
 
 #[tokio::main]
 async fn main() {
-    // Try connecting to the database until success
-    let client = get_postgres_client().await;
+    let client = DatabaseClient::new().await;
 
     loop {
-        match fetch_recent_submissions(5).await {
+        match get_recent_submissions(60).await {
             Ok(submissions) => {
                 for submission in submissions {
-                    if let Err(e) = update_by_submission(&client, &submission).await {
-                        eprintln!("Failed to store a submission: {e}");
+                    if let Err(e) = update_user_status(&client, &submission).await {
+                        eprintln!("Failed to update user status: {e}");
                     }
                 }
                 eprintln!("Finished to update.");

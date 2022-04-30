@@ -1,6 +1,6 @@
-CREATE TABLE bingos (
+CREATE TABLE problems (
     id             SERIAL PRIMARY KEY,
-    created_date   DATE,
+    chosen_date   DATE,
     position       INT,
     problem_id     TEXT,
     contest_id     TEXT,
@@ -11,5 +11,5 @@ CREATE TABLE bingos (
 CREATE TABLE user_status (
     user_id          TEXT,
     problem_row_id   INT,
-    accepted         BOOLEAN DEFAULT FALSE
+    accepted         BOOLEAN
 );

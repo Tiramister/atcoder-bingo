@@ -9,7 +9,6 @@ COPY Cargo.lock .
 RUN mkdir src
 RUN echo "fn main(){}" > src/main.rs
 RUN cargo build --release
-RUN rm -f target/release/deps/todo_list*
 
 # build
 COPY ./src ./src
@@ -28,7 +27,7 @@ RUN apt-get update \
 # copy binaries and run
 COPY ./static ./static
 COPY --from=builder /app/target/release/server /usr/local/bin/server
-COPY --from=builder /app/target/release/generate_bingo /usr/local/bin/generate_bingo
+COPY --from=builder /app/target/release/choose_problems /usr/local/bin/choose_problems
 COPY --from=builder /app/target/release/update_users /usr/local/bin/update_users
-COPY ./config/run_backend.sh .
+COPY ./script/run_backend.sh .
 CMD ["sh", "run_backend.sh"]

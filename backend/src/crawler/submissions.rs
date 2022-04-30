@@ -1,4 +1,4 @@
-use crate::crawler::api::hit_api;
+use crate::crawler::api::get_request;
 use anyhow::Result;
 use chrono::{Duration, Local, NaiveDateTime};
 use serde::Deserialize;
@@ -22,17 +22,17 @@ pub struct Submission {
 }
 
 /// Fetch at most 1000 submissions from `begin_time`.
-async fn fetch_submissions_from(begin_time: &NaiveDateTime) -> Result<Vec<Submission>> {
+async fn get_submissions_from(begin_time: &NaiveDateTime) -> Result<Vec<Submission>> {
     let begin_time_epoch = begin_time.timestamp();
 
-    // Fetch raw submissions
-    let body = hit_api(&format!(
+    // Fetch raw submissions.
+    let body = get_request(&format!(
         "https://kenkoooo.com/atcoder/atcoder-api/v3/from/{begin_time_epoch}"
     ))
     .await?;
-
-    // Parse and convert to `Submission`
     let raw_submissions: Vec<RawSubmission> = serde_json::from_str(&body)?;
+
+    // Convert into `Submission`.
     let submissions = raw_submissions
         .iter()
         .map(|raw_submission| {
@@ -51,7 +51,7 @@ async fn fetch_submissions_from(begin_time: &NaiveDateTime) -> Result<Vec<Submis
 }
 
 /// Fetch all submissions in these `minutes` minutes.
-pub async fn fetch_recent_submissions(minutes: i64) -> Result<Vec<Submission>> {
+pub async fn get_recent_submissions(minutes: i64) -> Result<Vec<Submission>> {
     let now = Local::now().naive_local();
     let mut begin_time = now.checked_sub_signed(Duration::minutes(minutes)).unwrap();
 
@@ -59,9 +59,9 @@ pub async fn fetch_recent_submissions(minutes: i64) -> Result<Vec<Submission>> {
     loop {
         eprintln!("Fetching submissions from {begin_time:?}...");
 
-        let mut recent_submissions = fetch_submissions_from(&begin_time).await?;
+        let mut recent_submissions = get_submissions_from(&begin_time).await?;
 
-        // Get several information before `recent_submissions` is moved.
+        // Stash several information before `recent_submissions` is moved.
         let submission_num = recent_submissions.len();
         begin_time = recent_submissions
             .iter()

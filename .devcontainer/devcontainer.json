@@ -1,13 +1,14 @@
 {
-	"name": "acb-development",
+	"name": "dev",
 	"dockerComposeFile": "docker-compose.yml",
-	"service": "backend-development",
-	"workspaceFolder": "/work/",
+	"service": "dev",
+	"workspaceFolder": "/home/vscode/atcoder-bingo",
 	"extensions": [
 		"mutantdino.resourcemonitor",
 		"matklad.rust-analyzer",
 		"tamasfe.even-better-toml",
 		"serayuzgur.crates",
-		"ms-vscode.live-server"
+		"ms-vscode.live-server",
+		"vadimcn.vscode-lldb",
 	],
 }

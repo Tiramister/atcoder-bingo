@@ -1,12 +1,11 @@
-use std::fmt;
-
 use actix_files as fs;
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, ResponseError};
 use askama::Template;
-use atcoder_bingo_backend::database::get_postgres_client;
+use atcoder_bingo_backend::database::{models, DatabaseClient};
 use chrono::Local;
 use regex::Regex;
 use serde::Deserialize;
+use std::fmt;
 use thiserror::Error;
 
 const LEVEL_NAMES: [&str; 5] = ["NOVICE", "ADVANCED", "EXPERT", "MASTER", "ULTIMATE"];
@@ -47,10 +46,23 @@ impl Problem {
     }
 }
 
+impl From<models::Problem> for Problem {
+    fn from(problem: models::Problem) -> Self {
+        Self {
+            row_id: problem.id,
+            problem_id: problem.problem_id.clone(),
+            contest_id: problem.contest_id.clone(),
+            title: problem.title.clone(),
+            difficulty: problem.difficulty,
+            status: Status::NoStatus,
+        }
+    }
+}
+
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {
-    pub bingos: Vec<(Vec<Problem>, &'static str)>,
+    pub problems: Vec<(Vec<Problem>, &'static str)>,
 }
 
 #[derive(Error, Debug)]
@@ -63,47 +75,29 @@ enum MyError {
 }
 impl ResponseError for MyError {}
 
-async fn get_todays_bingos(user_id_opt: &Option<String>) -> anyhow::Result<Vec<Vec<Problem>>> {
-    let client = get_postgres_client().await;
+async fn get_todays_problems(user_id_opt: &Option<String>) -> anyhow::Result<Vec<Vec<Problem>>> {
+    let client = DatabaseClient::new().await;
 
     // Filter today's problems
     let today = Local::today().naive_local();
-    let rows = client
-        .query(
-            "SELECT id, problem_id, contest_id, title, difficulty FROM bingos \
-            WHERE created_date = $1 ORDER BY position asc",
-            &[&today],
-        )
-        .await?;
+    let mut problems = client.select_problems_by_chosen_date(&today).await?;
 
-    let mut problems: Vec<Problem> = rows
-        .iter()
-        .map(|row| Problem {
-            row_id: row.get(0),
-            problem_id: row.get(1),
-            contest_id: row.get(2),
-            title: row.get(3),
-            difficulty: row.get(4),
-            status: Status::NoStatus,
-        })
-        .collect();
+    // Sort by positions and convert
+    problems.sort_by_key(|problem| problem.position);
+    let mut problems: Vec<Problem> = problems.into_iter().map(Problem::from).collect();
 
     if let Some(user_id) = user_id_opt {
         // Validate input
-        if Regex::new("^[a-zA-Z0-9_]{0,16}$").unwrap().is_match(user_id) {
+        if Regex::new("^[a-zA-Z0-9_]{0,16}$")
+            .unwrap()
+            .is_match(user_id)
+        {
             // Update status
             for problem in &mut problems {
-                let rows = client
-                    .query(
-                        "SELECT accepted FROM user_status \
-                    WHERE user_id = $1 AND problem_row_id = $2",
-                        &[user_id, &problem.row_id],
-                    )
-                    .await?;
+                let user_status_opt = client.select_user_status(user_id, problem.row_id).await?;
 
-                if !rows.is_empty() {
-                    let accepted: bool = rows[0].get(0);
-                    problem.status = if accepted {
+                if let Some(user_status) = user_status_opt {
+                    problem.status = if user_status.accepted {
                         Status::Accepted
                     } else {
                         Status::Trying
@@ -116,8 +110,8 @@ async fn get_todays_bingos(user_id_opt: &Option<String>) -> anyhow::Result<Vec<V
     assert_eq!(problems.len(), 45);
 
     // Divide problems into 5 chunks with 9 problems
-    let bingos = problems.chunks(9).map(|bingo| bingo.to_vec()).collect();
-    Ok(bingos)
+    let problems = problems.chunks(9).map(|bingo| bingo.to_vec()).collect();
+    Ok(problems)
 }
 
 #[derive(Deserialize)]
@@ -127,12 +121,12 @@ struct IndexParameter {
 
 #[get("/")]
 async fn index(query: web::Query<IndexParameter>) -> actix_web::Result<impl Responder, MyError> {
-    let bingos = get_todays_bingos(&query.user_id).await?;
+    let problems = get_todays_problems(&query.user_id).await?;
 
     // Rendering
-    let labeled_bingos = bingos.into_iter().zip(LEVEL_NAMES).collect();
+    let labeled_problems = problems.into_iter().zip(LEVEL_NAMES).collect();
     let html = IndexTemplate {
-        bingos: labeled_bingos,
+        problems: labeled_problems,
     };
     Ok(HttpResponse::Ok()
         .content_type("text/html")

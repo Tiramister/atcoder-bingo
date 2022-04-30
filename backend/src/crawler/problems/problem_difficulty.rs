@@ -1,4 +1,4 @@
-use crate::crawler::api::hit_api;
+use crate::crawler::api::get_request;
 use anyhow::Result;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -16,15 +16,19 @@ pub struct ProblemDifficulty {
 }
 
 /// Fetch difficulties from AtCoder Problems API.
-pub async fn fetch_difficulties() -> Result<Vec<ProblemDifficulty>> {
-    let body = hit_api("https://kenkoooo.com/atcoder/resources/problem-models.json").await?;
-
+pub async fn get_problem_difficulties() -> Result<Vec<ProblemDifficulty>> {
+    let body = get_request("https://kenkoooo.com/atcoder/resources/problem-models.json").await?;
     let map: HashMap<String, RawProblemDifficulty> = serde_json::from_str(&body)?;
-    let difficulties = map
+
+    // Filter problems with a non-experimental difficulty.
+    let problem_difficulties = map
         .into_iter()
-        .filter_map(|(problem_id, problem)| {
+        .filter_map(|(problem_id, raw_problem_difficulty)| {
             // Filter elements with non-experimental difficulty
-            match (problem.difficulty, problem.is_experimental) {
+            match (
+                raw_problem_difficulty.difficulty,
+                raw_problem_difficulty.is_experimental,
+            ) {
                 (Some(difficulty), Some(false)) => Some(ProblemDifficulty {
                     problem_id,
                     difficulty,
@@ -33,5 +37,6 @@ pub async fn fetch_difficulties() -> Result<Vec<ProblemDifficulty>> {
             }
         })
         .collect();
-    Ok(difficulties)
+
+    Ok(problem_difficulties)
 }
