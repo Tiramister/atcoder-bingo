@@ -1,11 +1,11 @@
 use actix_files as fs;
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, ResponseError};
+use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder, ResponseError};
 use askama::Template;
 use atcoder_bingo_backend::database::{models, DatabaseClient};
 use chrono::Local;
 use regex::Regex;
 use serde::Deserialize;
-use std::fmt;
+use std::{fmt, sync::Mutex};
 use thiserror::Error;
 
 const LEVEL_NAMES: [&str; 5] = ["NOVICE", "ADVANCED", "EXPERT", "MASTER", "ULTIMATE"];
@@ -75,9 +75,10 @@ enum MyError {
 }
 impl ResponseError for MyError {}
 
-async fn get_todays_problems(user_id_opt: &Option<String>) -> anyhow::Result<Vec<Vec<Problem>>> {
-    let client = DatabaseClient::new().await;
-
+async fn get_todays_problems(
+    user_id_opt: &Option<String>,
+    client: &DatabaseClient,
+) -> anyhow::Result<Vec<Vec<Problem>>> {
     // Filter today's problems
     let today = Local::today().naive_local();
     let mut problems = client.select_problems_by_chosen_date(&today).await?;
@@ -120,8 +121,17 @@ struct IndexParameter {
 }
 
 #[get("/")]
-async fn index(query: web::Query<IndexParameter>) -> actix_web::Result<impl Responder, MyError> {
-    let problems = get_todays_problems(&query.user_id).await?;
+async fn index(
+    query: web::Query<IndexParameter>,
+    req: HttpRequest,
+) -> actix_web::Result<impl Responder, MyError> {
+    log::info!("Request to index page");
+
+    // Get database client from state
+    let client_mutex = req.app_data::<web::Data<Mutex<DatabaseClient>>>().unwrap();
+    let client = client_mutex.lock().unwrap();
+
+    let problems = get_todays_problems(&query.user_id, &(*client)).await?;
 
     // Rendering
     let labeled_problems = problems.into_iter().zip(LEVEL_NAMES).collect();
@@ -137,8 +147,13 @@ async fn index(query: web::Query<IndexParameter>) -> actix_web::Result<impl Resp
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    HttpServer::new(|| {
-        App::new().service(
+    let client = DatabaseClient::new().await;
+
+    // Wrap with web::Data and Mutex
+    let client = web::Data::new(Mutex::new(client));
+
+    HttpServer::new(move || {
+        App::new().app_data(client.clone()).service(
             web::scope("/atcoder-bingo")
                 .service(index)
                 .service(fs::Files::new("/static", "./static").show_files_listing()),
