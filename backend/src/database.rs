@@ -65,7 +65,7 @@ impl DatabaseClient {
 /// Try to connect to the database until success.
 /// Then return the client.
 async fn get_connection() -> Client {
-    let url = env::var("POSTGRES_URL").expect("error: POSTGRES_URL is not set.");
+    let url = env::var("POSTGRES_URL").expect("POSTGRES_URL is not set.");
 
     let mut conn = tokio_postgres::connect(&url, NoTls).await;
     while let Err(e) = conn {
