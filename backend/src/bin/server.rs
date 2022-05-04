@@ -135,6 +135,8 @@ async fn index(query: web::Query<IndexParameter>) -> actix_web::Result<impl Resp
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    env_logger::init();
+
     HttpServer::new(|| {
         App::new().service(
             web::scope("/atcoder-bingo")

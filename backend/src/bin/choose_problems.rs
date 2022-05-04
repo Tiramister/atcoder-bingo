@@ -102,14 +102,16 @@ async fn choose_and_store_problems(client: &DatabaseClient) -> Result<bool> {
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let client = DatabaseClient::new().await;
 
     loop {
         // Check if the daily bingo exists in every 5 mins
         match choose_and_store_problems(&client).await {
-            Ok(true) => eprintln!("New bingo is generated."),
-            Ok(false) => eprintln!("Today's bingo already exists."),
-            Err(e) => eprintln!("Failed to generate bingo: {}", e),
+            Ok(true) => log::info!("New bingo is generated."),
+            Ok(false) => log::info!("Today's bingo already exists."),
+            Err(e) => log::error!("Failed to generate bingo: {}", e),
         }
         sleep(std::time::Duration::from_secs(300)).await;
     }

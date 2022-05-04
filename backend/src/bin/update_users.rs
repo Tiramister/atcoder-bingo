@@ -49,6 +49,8 @@ async fn update_user_status(client: &DatabaseClient, submission: &Submission) ->
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let client = DatabaseClient::new().await;
 
     loop {
@@ -56,12 +58,12 @@ async fn main() {
             Ok(submissions) => {
                 for submission in submissions {
                     if let Err(e) = update_user_status(&client, &submission).await {
-                        eprintln!("Failed to update user status: {e}");
+                        log::error!("Failed to update user status: {e}");
                     }
                 }
-                eprintln!("Finished to update.");
+                log::info!("Finished to update user status.");
             }
-            Err(e) => eprintln!("Failed to fetch recent submissions: {e}"),
+            Err(e) => log::error!("Failed to fetch recent submissions: {e}"),
         }
         sleep(Duration::from_secs(30)).await;
     }

@@ -57,7 +57,7 @@ pub async fn get_recent_submissions(minutes: i64) -> Result<Vec<Submission>> {
 
     let mut submissions = Vec::new();
     loop {
-        eprintln!("Fetching submissions from {begin_time:?}...");
+        log::info!("Fetching submissions from {begin_time:?}...");
 
         let mut recent_submissions = get_submissions_from(&begin_time).await?;
 
@@ -71,7 +71,7 @@ pub async fn get_recent_submissions(minutes: i64) -> Result<Vec<Submission>> {
 
         submissions.append(&mut recent_submissions);
 
-        eprintln!("{submission_num} submissions are obtained.");
+        log::info!("{submission_num} submissions are obtained.");
         if submission_num < 1000 {
             break;
         }

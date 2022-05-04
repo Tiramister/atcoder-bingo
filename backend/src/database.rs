@@ -69,18 +69,18 @@ async fn get_connection() -> Client {
 
     let mut conn = tokio_postgres::connect(&url, NoTls).await;
     while let Err(e) = conn {
-        eprintln!("Failed to connect to the database: {e}");
+        log::error!("Failed to connect to the database: {e}");
         sleep(Duration::from_secs(5)).await;
-        eprintln!("Try to connect again...");
+        log::error!("Try to connect again...");
         conn = tokio_postgres::connect(&url, NoTls).await;
     }
 
     let (client, connection) = conn.unwrap();
-    eprintln!("Succeed to connect to the database.");
+    log::info!("Succeed to connect to the database.");
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
+            log::error!("Connection error: {}", e);
         }
     });
 
