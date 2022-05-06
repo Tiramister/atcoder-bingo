@@ -1,7 +1,8 @@
 use chrono::NaiveDate;
+use serde::Serialize;
 
 /// Problem information with its estimated difficulty.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Problem {
     pub id: i32,
     pub chosen_date: NaiveDate,
@@ -27,7 +28,7 @@ impl From<tokio_postgres::Row> for Problem {
 }
 
 /// User status
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct UserStatus {
     pub user_id: String,
     pub problem_row_id: i32,

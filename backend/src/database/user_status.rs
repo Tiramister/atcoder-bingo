@@ -27,7 +27,7 @@ pub async fn select_between_problem_row_id(
 ) -> Result<Vec<UserStatus>> {
     let row = client
         .query(
-            "SELECT * FROM user_status WHERE problem_row_id >= $2 AND problem_row_id <= $3",
+            "SELECT * FROM user_status WHERE problem_row_id >= $1 AND problem_row_id <= $2",
             &[&problem_row_id_from, &problem_row_id_to],
         )
         .await?;
