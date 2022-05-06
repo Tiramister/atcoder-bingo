@@ -18,6 +18,24 @@ pub async fn select(
     Ok(user_status)
 }
 
+/// All user status for problems with row ID (index in the database)
+/// between `problem_row_id_from` and `problem_row_id_to` (inclusive).
+pub async fn select_between_problem_row_id(
+    client: &Client,
+    problem_row_id_from: i32,
+    problem_row_id_to: i32,
+) -> Result<Vec<UserStatus>> {
+    let row = client
+        .query(
+            "SELECT * FROM user_status WHERE problem_row_id >= $2 AND problem_row_id <= $3",
+            &[&problem_row_id_from, &problem_row_id_to],
+        )
+        .await?;
+
+    let user_status = row.into_iter().map(UserStatus::from).collect();
+    Ok(user_status)
+}
+
 pub async fn insert(client: &Client, user_status: &UserStatus) -> Result<()> {
     client
         .execute(

@@ -53,6 +53,19 @@ impl DatabaseClient {
         user_status::select(&self.client, user_id, problem_row_id).await
     }
 
+    pub async fn select_user_status_between_problem_row_id(
+        &self,
+        problem_row_id_from: i32,
+        problem_row_id_to: i32,
+    ) -> Result<Vec<UserStatus>> {
+        user_status::select_between_problem_row_id(
+            &self.client,
+            problem_row_id_from,
+            problem_row_id_to,
+        )
+        .await
+    }
+
     pub async fn insert_user_status(&self, user_status: &UserStatus) -> Result<()> {
         user_status::insert(&self.client, user_status).await
     }
