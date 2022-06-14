@@ -1,18 +1,22 @@
 {
-	"name": "dev",
-	"dockerComposeFile": "docker-compose.yml",
-	"service": "dev",
-	"workspaceFolder": "/home/vscode/atcoder-bingo",
-	"extensions": [
-		"mutantdino.resourcemonitor",
-		"matklad.rust-analyzer",
-		"tamasfe.even-better-toml",
-		"serayuzgur.crates",
-		"ms-vscode.live-server",
-		"vadimcn.vscode-lldb"
-	],
-	"settings": {
-		"editor.formatOnSave": true,
-		"rust-analyzer.checkOnSave.command": "clippy"
-	}
+  "name": "dev",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/home/vscode/atcoder-bingo",
+  "extensions": [
+    "mutantdino.resourcemonitor",
+    "matklad.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "serayuzgur.crates",
+    "ms-vscode.live-server",
+    "vadimcn.vscode-lldb",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint"
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "rust-analyzer.checkOnSave.command": "clippy",
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "eslint.workingDirectories": ["./frontend"]
+  }
 }
