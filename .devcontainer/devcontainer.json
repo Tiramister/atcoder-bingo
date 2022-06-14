@@ -9,10 +9,10 @@
 		"tamasfe.even-better-toml",
 		"serayuzgur.crates",
 		"ms-vscode.live-server",
-		"vadimcn.vscode-lldb",
+		"vadimcn.vscode-lldb"
 	],
 	"settings": {
 		"editor.formatOnSave": true,
-		"rust-analyzer.checkOnSave.command": "clippy",
+		"rust-analyzer.checkOnSave.command": "clippy"
 	}
 }
